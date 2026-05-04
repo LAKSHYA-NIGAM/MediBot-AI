@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediBot - Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1040 30%, #0d1933 60%, #0a0e27 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        canvas#particleCanvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+        }
+        .login-container {
+            position: relative; z-index: 10; width: 420px; max-width: 95vw;
+            perspective: 1000px;
+        }
+        .glass-card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px; padding: 40px 36px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.5), 0 0 40px rgba(99,102,241,0.1);
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.23,1,0.32,1), box-shadow 0.6s ease;
+            animation: cardFloat 6s ease-in-out infinite;
+        }
+        .glass-card:hover {
+            box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 60px rgba(99,102,241,0.2);
+        }
+        @keyframes cardFloat {
+            0%, 100% { transform: translateY(0) rotateX(0) rotateY(0); }
+            50% { transform: translateY(-8px) rotateX(1deg) rotateY(-1deg); }
+        }
+        .logo-area {
+            text-align: center; margin-bottom: 32px;
+        }
+        .logo-icon {
+            width: 64px; height: 64px; margin: 0 auto 16px;
+            background: linear-gradient(135deg, #6366f1 0%, #06b6d4 50%, #10b981 100%);
+            border-radius: 18px; display: flex; align-items: center; justify-content: center;
+            font-size: 28px; color: #fff;
+            box-shadow: 0 8px 24px rgba(99,102,241,0.4);
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+        @keyframes logoPulse {
+            0%, 100% { box-shadow: 0 8px 24px rgba(99,102,241,0.4); }
+            50% { box-shadow: 0 8px 40px rgba(99,102,241,0.7); }
+        }
+        .logo-area h1 {
+            font-size: 26px; font-weight: 700;
+            background: linear-gradient(135deg, #e0e7ff, #c4b5fd, #67e8f9);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .logo-area p { color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 4px; }
+        .tab-switch {
+            display: flex; gap: 4px; margin-bottom: 28px;
+            background: rgba(255,255,255,0.05); border-radius: 12px; padding: 4px;
+        }
+        .tab-btn {
+            flex: 1; padding: 10px; border: none; border-radius: 10px;
+            background: transparent; color: rgba(255,255,255,0.5);
+            font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.3s ease;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #fff; box-shadow: 0 4px 15px rgba(99,102,241,0.4);
+        }
+        .form-group { margin-bottom: 18px; position: relative; }
+        .form-group label {
+            display: block; font-size: 12px; font-weight: 500;
+            color: rgba(255,255,255,0.6); margin-bottom: 6px; text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group .input-wrap {
+            position: relative;
+        }
+        .form-group .input-wrap i {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            color: rgba(255,255,255,0.3); font-size: 14px; transition: color 0.3s;
+        }
+        .form-group input {
+            width: 100%; padding: 12px 14px 12px 42px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; color: #fff; font-family: 'Inter', sans-serif;
+            font-size: 14px; outline: none; transition: all 0.3s ease;
+        }
+        .form-group input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+            background: rgba(255,255,255,0.08);
+        }
+        .form-group input:focus + i, .form-group input:focus ~ i { color: #6366f1; }
+        .form-group input::placeholder { color: rgba(255,255,255,0.25); }
+        .submit-btn {
+            width: 100%; padding: 14px; border: none; border-radius: 12px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+            background-size: 200% 200%; color: #fff; font-family: 'Inter', sans-serif;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            transition: all 0.4s ease; position: relative; overflow: hidden;
+            margin-top: 8px;
+        }
+        .submit-btn:hover {
+            background-position: 100% 0;
+            box-shadow: 0 8px 30px rgba(99,102,241,0.5);
+            transform: translateY(-2px);
+        }
+        .submit-btn:active { transform: translateY(0); }
+        .flash-msg {
+            background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
+            color: #fca5a5; padding: 10px 14px; border-radius: 10px;
+            font-size: 13px; margin-bottom: 16px; text-align: center;
+        }
+        .form-panel { display: none; }
+        .form-panel.active { display: block; animation: fadeSlide 0.4s ease; }
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .glow-orb {
+            position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.15;
+            pointer-events: none; z-index: 1;
+        }
+        .glow-orb.purple { width: 400px; height: 400px; background: #6366f1; top: -100px; right: -100px; }
+        .glow-orb.cyan { width: 350px; height: 350px; background: #06b6d4; bottom: -80px; left: -80px; }
+        .glow-orb.green { width: 300px; height: 300px; background: #10b981; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+    </style>
+</head>
+<body>
+    <div class="glow-orb purple"></div>
+    <div class="glow-orb cyan"></div>
+    <div class="glow-orb green"></div>
+    <canvas id="particleCanvas"></canvas>
+
+    <div class="login-container">
+        <div class="glass-card" id="glassCard">
+            <div class="logo-area">
+                <div class="logo-icon"><i class="fas fa-heartbeat"></i></div>
+                <h1>MediBot AI</h1>
+                <p>Your Intelligent Medical Assistant</p>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="flash-msg">{{ messages[0] }}</div>
+            {% endif %}
+            {% endwith %}
+
+            <div class="tab-switch">
+                <button class="tab-btn {% if not show_register %}active{% endif %}" onclick="showPanel('login')" id="loginTab">Sign In</button>
+                <button class="tab-btn {% if show_register %}active{% endif %}" onclick="showPanel('register')" id="registerTab">Sign Up</button>
+            </div>
+
+            <!-- Login Form -->
+            <div class="form-panel {% if not show_register %}active{% endif %}" id="loginPanel">
+                <form method="POST" action="/login">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <div class="input-wrap">
+                            <input type="text" name="username" placeholder="Enter your username" required>
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <div class="input-wrap">
+                            <input type="password" name="password" placeholder="Enter your password" required>
+                            <i class="fas fa-lock"></i>
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-btn">
+                        <i class="fas fa-sign-in-alt"></i>&nbsp; Sign In
+                    </button>
+                </form>
+            </div>
+
+            <!-- Register Form -->
+            <div class="form-panel {% if show_register %}active{% endif %}" id="registerPanel">
+                <form method="POST" action="/register">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <div class="input-wrap">
+                            <input type="text" name="username" placeholder="Choose a username" required>
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <div class="input-wrap">
+                            <input type="email" name="email" placeholder="Enter your email" required>
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <div class="input-wrap">
+                            <input type="password" name="password" placeholder="Create a password" required>
+                            <i class="fas fa-lock"></i>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <div class="input-wrap">
+                            <input type="password" name="confirm_password" placeholder="Confirm your password" required>
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-btn">
+                        <i class="fas fa-user-plus"></i>&nbsp; Create Account
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function showPanel(panel) {
+        document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(panel + 'Panel').classList.add('active');
+        document.getElementById(panel + 'Tab').classList.add('active');
+    }
+
+    // 3D tilt effect
+    const card = document.getElementById('glassCard');
+    const container = document.querySelector('.login-container');
+    container.addEventListener('mousemove', (e) => {
+        const rect = container.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width - 0.5;
+        const y = (e.clientY - rect.top) / rect.height - 0.5;
+        card.style.transform = `translateY(-4px) rotateY(${x*10}deg) rotateX(${-y*10}deg)`;
+    });
+    container.addEventListener('mouseleave', () => {
+        card.style.transform = '';
+    });
+
+    // Particle background
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resize); resize();
+
+    class Particle {
+        constructor() { this.reset(); }
+        reset() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.size = Math.random() * 2 + 0.5;
+            this.speedX = (Math.random() - 0.5) * 0.5;
+            this.speedY = (Math.random() - 0.5) * 0.5;
+            this.opacity = Math.random() * 0.5 + 0.1;
+            const colors = ['99,102,241','6,182,212','16,185,129','139,92,246'];
+            this.color = colors[Math.floor(Math.random() * colors.length)];
+        }
+        update() {
+            this.x += this.speedX; this.y += this.speedY;
+            if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+        }
+        draw() {
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${this.color},${this.opacity})`; ctx.fill();
+        }
+    }
+    for (let i = 0; i < 80; i++) particles.push(new Particle());
+
+    function animateParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => { p.update(); p.draw(); });
+        // Draw connections
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 120) {
+                    ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.strokeStyle = `rgba(99,102,241,${0.08 * (1 - dist/120)})`;
+                    ctx.lineWidth = 0.5; ctx.stroke();
+                }
+            }
+        }
+        requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+    </script>
+</body>
+</html>

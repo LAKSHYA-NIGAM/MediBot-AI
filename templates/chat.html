@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediBot AI - Medical Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <canvas id="particleCanvas"></canvas>
+    <div class="glow-orb orb-purple"></div>
+    <div class="glow-orb orb-cyan"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <i class="fas fa-heartbeat"></i>
+            </div>
+            <span class="sidebar-title">MediBot</span>
+        </div>
+        <div class="sidebar-user">
+            <div class="user-avatar">{{ username[0]|upper if username else 'U' }}</div>
+            <div class="user-details">
+                <span class="user-name">{{ username }}</span>
+                <span class="user-status"><i class="fas fa-circle"></i> Online</span>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <button class="nav-item active" onclick="clearChatUI()">
+                <i class="fas fa-plus"></i> New Chat
+            </button>
+            <button class="nav-item" onclick="loadHistory()">
+                <i class="fas fa-clock-rotate-left"></i> Chat History
+            </button>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/logout" class="nav-item logout-btn">
+                <i class="fas fa-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="chat-main" id="chatMain">
+        <!-- Toggle sidebar on mobile -->
+        <button class="sidebar-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Chat Header -->
+        <header class="chat-header">
+            <div class="header-info">
+                <div class="bot-avatar-header">
+                    <i class="fas fa-robot"></i>
+                    <span class="status-dot"></span>
+                </div>
+                <div>
+                    <h1>MediBot AI</h1>
+                    <p>Medical Assistant &bull; Powered by Gemini</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button onclick="clearChatAPI()" title="Clear History" class="header-btn">
+                    <i class="fas fa-trash-can"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Messages Area -->
+        <div class="messages-container" id="chatMessages">
+            <!-- Welcome message -->
+            <div class="welcome-screen" id="welcomeScreen">
+                <div class="welcome-icon">
+                    <i class="fas fa-stethoscope"></i>
+                </div>
+                <h2>Welcome, {{ username }}!</h2>
+                <p>I'm your AI Medical Assistant. Ask me anything about health, symptoms, medications, or upload medical documents for analysis.</p>
+                <div class="quick-actions">
+                    <button class="quick-btn" onclick="sendQuick('What are the symptoms of diabetes?')">
+                        <i class="fas fa-disease"></i> Diabetes Symptoms
+                    </button>
+                    <button class="quick-btn" onclick="sendQuick('How to perform CPR?')">
+                        <i class="fas fa-heart-pulse"></i> CPR Guide
+                    </button>
+                    <button class="quick-btn" onclick="sendQuick('Common medications for headache')">
+                        <i class="fas fa-pills"></i> Headache Relief
+                    </button>
+                    <button class="quick-btn" onclick="sendQuick('Tips for managing stress and anxiety')">
+                        <i class="fas fa-brain"></i> Stress Management
+                    </button>
+                </div>
+            </div>
+
+            {% if chat_history %}
+            {% for msg in chat_history %}
+            {% if msg.role == 'user' %}
+            <div class="message-row user-row">
+                <div class="message user-message">
+                    <div class="msg-content">{{ msg.message }}</div>
+                </div>
+                <div class="msg-avatar user-av">{{ username[0]|upper }}</div>
+            </div>
+            {% else %}
+            <div class="message-row bot-row">
+                <div class="msg-avatar bot-av"><i class="fas fa-robot"></i></div>
+                <div class="message bot-message">
+                    <div class="msg-content">{{ msg.message }}</div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- File Preview -->
+        <div class="file-preview" id="filePreview" style="display:none;">
+            <div class="file-preview-inner">
+                <i class="fas fa-file" id="fileIcon"></i>
+                <span id="fileName">file.pdf</span>
+                <button onclick="clearFile()" class="file-remove"><i class="fas fa-xmark"></i></button>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <form id="messageForm" class="input-form" enctype="multipart/form-data">
+                <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.gif,.txt,.webp" style="display:none" onchange="onFileSelected()">
+                <button type="button" class="input-btn attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach File">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                <input type="text" id="msgInput" name="msg" placeholder="Ask me about health, symptoms, medications..." autocomplete="off" required>
+                <button type="submit" class="input-btn send-btn" id="sendBtn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+            <p class="disclaimer">MediBot provides information for educational purposes only. Always consult a healthcare professional.</p>
+        </div>
+    </main>
+
+    <script>
+    const chatMessages = document.getElementById('chatMessages');
+    const msgInput = document.getElementById('msgInput');
+    const messageForm = document.getElementById('messageForm');
+    const fileInput = document.getElementById('fileInput');
+    const filePreview = document.getElementById('filePreview');
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    const sendBtn = document.getElementById('sendBtn');
+    let selectedFile = null;
+
+    // Hide welcome if there's history
+    {% if chat_history and chat_history|length > 0 %}
+    if(welcomeScreen) welcomeScreen.style.display = 'none';
+    {% endif %}
+
+    // Auto scroll to bottom
+    function scrollToBottom() {
+        setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 100);
+    }
+    scrollToBottom();
+
+    function getTime() {
+        const d = new Date();
+        return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+    }
+
+    function addMessage(text, role, animate=true) {
+        if(welcomeScreen) welcomeScreen.style.display = 'none';
+        const row = document.createElement('div');
+        row.className = `message-row ${role}-row${animate ? ' msg-animate' : ''}`;
+        const username = '{{ username }}';
+
+        if (role === 'user') {
+            row.innerHTML = `
+                <div class="message user-message"><div class="msg-content">${escapeHtml(text)}</div></div>
+                <div class="msg-avatar user-av">${username[0].toUpperCase()}</div>`;
+        } else {
+            row.innerHTML = `
+                <div class="msg-avatar bot-av"><i class="fas fa-robot"></i></div>
+                <div class="message bot-message"><div class="msg-content">${formatBotMessage(text)}</div></div>`;
+        }
+        chatMessages.appendChild(row);
+        scrollToBottom();
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatBotMessage(text) {
+        // Basic markdown-like formatting
+        let html = escapeHtml(text);
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        html = html.replace(/\n/g, '<br>');
+        return html;
+    }
+
+    function showTyping() {
+        const row = document.createElement('div');
+        row.className = 'message-row bot-row msg-animate';
+        row.id = 'typingIndicator';
+        row.innerHTML = `
+            <div class="msg-avatar bot-av"><i class="fas fa-robot"></i></div>
+            <div class="message bot-message typing-msg">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+            </div>`;
+        chatMessages.appendChild(row);
+        scrollToBottom();
+    }
+
+    function hideTyping() {
+        const el = document.getElementById('typingIndicator');
+        if (el) el.remove();
+    }
+
+    function setLoading(loading) {
+        sendBtn.disabled = loading;
+        if(loading) {
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        } else {
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        }
+    }
+
+    messageForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const msg = msgInput.value.trim();
+        if (!msg && !selectedFile) return;
+
+        addMessage(msg || (selectedFile ? `[File: ${selectedFile.name}]` : ''), 'user');
+        msgInput.value = '';
+        showTyping();
+        setLoading(true);
+
+        if (selectedFile) {
+            // Upload with file
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('msg', msg || 'Analyze this file');
+            fetch('/upload', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    hideTyping();
+                    setLoading(false);
+                    addMessage(data.answer || data.error || 'No response', 'bot');
+                })
+                .catch(err => {
+                    hideTyping(); setLoading(false);
+                    addMessage('Error: Could not process file.', 'bot');
+                });
+            clearFile();
+        } else {
+            // Text only
+            const formData = new FormData();
+            formData.append('msg', msg);
+            fetch('/get', { method: 'POST', body: formData })
+                .then(r => r.text())
+                .then(data => {
+                    hideTyping(); setLoading(false);
+                    addMessage(data, 'bot');
+                })
+                .catch(err => {
+                    hideTyping(); setLoading(false);
+                    addMessage('Error: Could not get response.', 'bot');
+                });
+        }
+    });
+
+    function sendQuick(text) {
+        msgInput.value = text;
+        messageForm.dispatchEvent(new Event('submit'));
+    }
+
+    function onFileSelected() {
+        const file = fileInput.files[0];
+        if (!file) return;
+        selectedFile = file;
+        document.getElementById('fileName').textContent = file.name;
+        const ext = file.name.split('.').pop().toLowerCase();
+        const iconMap = { pdf:'fa-file-pdf', png:'fa-file-image', jpg:'fa-file-image',
+            jpeg:'fa-file-image', gif:'fa-file-image', webp:'fa-file-image', txt:'fa-file-lines' };
+        document.getElementById('fileIcon').className = 'fas ' + (iconMap[ext] || 'fa-file');
+        filePreview.style.display = 'flex';
+    }
+
+    function clearFile() {
+        selectedFile = null;
+        fileInput.value = '';
+        filePreview.style.display = 'none';
+    }
+
+    function clearChatUI() {
+        const msgs = chatMessages.querySelectorAll('.message-row');
+        msgs.forEach(m => m.remove());
+        if(welcomeScreen) welcomeScreen.style.display = '';
+    }
+
+    function clearChatAPI() {
+        if(!confirm('Clear all chat history?')) return;
+        fetch('/clear_history', { method: 'POST' })
+            .then(() => clearChatUI())
+            .catch(() => alert('Error clearing history'));
+    }
+
+    function loadHistory() {
+        fetch('/history').then(r => r.json()).then(data => {
+            clearChatUI();
+            if(data.length === 0) return;
+            data.forEach(m => addMessage(m.message, m.role, false));
+        });
+    }
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    // Drag and drop
+    const chatMain = document.getElementById('chatMain');
+    chatMain.addEventListener('dragover', (e) => { e.preventDefault(); chatMain.classList.add('drag-over'); });
+    chatMain.addEventListener('dragleave', () => { chatMain.classList.remove('drag-over'); });
+    chatMain.addEventListener('drop', (e) => {
+        e.preventDefault(); chatMain.classList.remove('drag-over');
+        if (e.dataTransfer.files.length > 0) {
+            const dt = new DataTransfer();
+            dt.items.add(e.dataTransfer.files[0]);
+            fileInput.files = dt.files;
+            onFileSelected();
+        }
+    });
+
+    // Particle background
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas); resizeCanvas();
+
+    class Particle {
+        constructor() { this.reset(); }
+        reset() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.size = Math.random() * 1.5 + 0.5;
+            this.speedX = (Math.random() - 0.5) * 0.3;
+            this.speedY = (Math.random() - 0.5) * 0.3;
+            this.opacity = Math.random() * 0.4 + 0.1;
+            const colors = ['99,102,241','6,182,212','16,185,129'];
+            this.color = colors[Math.floor(Math.random() * colors.length)];
+        }
+        update() {
+            this.x += this.speedX; this.y += this.speedY;
+            if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+        }
+        draw() {
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${this.color},${this.opacity})`; ctx.fill();
+        }
+    }
+    for (let i = 0; i < 60; i++) particles.push(new Particle());
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => { p.update(); p.draw(); });
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 100) {
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.strokeStyle = `rgba(99,102,241,${0.06 * (1 - dist/100)})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            }
+        }
+        requestAnimationFrame(animate);
+    }
+    animate();
+    </script>
+</body>
+</html>
