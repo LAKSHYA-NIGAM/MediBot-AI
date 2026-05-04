@@ -1,7 +1,10 @@
 from src.helper import load_pdf_file, filter_to_minimal_docs, text_split, download_hugging_face_embeddings, get_medical_knowledge_documents
 from langchain_chroma import Chroma
+from dotenv import load_dotenv
 import shutil
 import os
+
+load_dotenv()
 
 CHROMA_DB_DIR = "./chroma_db"
 

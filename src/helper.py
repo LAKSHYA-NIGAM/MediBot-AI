@@ -43,9 +43,14 @@ def text_split(extracted_data):
 
 
 
-#Download the Embeddings from HuggingFace 
+#Download the Embeddings - use Google's API (lightweight, no local model needed)
 def download_hugging_face_embeddings():
-    embeddings=HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+    import os
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="models/gemini-embedding-001",
+        google_api_key=os.getenv("GOOGLE_API_KEY")
+    )
     return embeddings
 
 

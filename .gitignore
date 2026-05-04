@@ -1,9 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 
-# ChromaDB local vector store
-chroma_db/
-
 # User database
 users.db
 *.py[codz]
