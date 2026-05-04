@@ -13,52 +13,67 @@ from pypdf import PdfReader
 from PIL import Image
 import os
 import io
-import base64
+import threading
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", os.urandom(24).hex())
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # Register auth blueprint
 app.register_blueprint(auth_bp)
-
-# Initialize database
 init_db()
 
 # Configure Gemini
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 genai_client = genai.Client(api_key=GOOGLE_API_KEY) if GOOGLE_API_KEY else None
 
-# Load embeddings and connect to ChromaDB
-embeddings = download_hugging_face_embeddings()
 CHROMA_DB_DIR = "./chroma_db"
-
-docsearch = Chroma(
-    persist_directory=CHROMA_DB_DIR,
-    embedding_function=embeddings,
-    collection_name="medical-chatbot"
-)
-
-retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 3})
-
-# Use Gemini (fast, free tier)
-chatModel = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    temperature=0.4,
-    google_api_key=GOOGLE_API_KEY
-)
-
-prompt = ChatPromptTemplate.from_messages([
-    ("system", system_prompt),
-    ("human", "{input}"),
-])
-
-question_answer_chain = create_stuff_documents_chain(chatModel, prompt)
-rag_chain = create_retrieval_chain(retriever, question_answer_chain)
-
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'txt', 'webp'}
+
+# Lazy-loaded globals
+_rag_chain = None
+_init_lock = threading.Lock()
+_init_done = False
+
+
+def _initialize_rag():
+    """Load embeddings + ChromaDB + LLM chain. Called once on first request."""
+    global _rag_chain, _init_done
+    if _init_done:
+        return
+    with _init_lock:
+        if _init_done:
+            return
+        print("Initializing RAG chain (first request)...")
+        embeddings = download_hugging_face_embeddings()
+        docsearch = Chroma(
+            persist_directory=CHROMA_DB_DIR,
+            embedding_function=embeddings,
+            collection_name="medical-chatbot"
+        )
+        retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 3})
+        chatModel = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            temperature=0.4,
+            google_api_key=GOOGLE_API_KEY
+        )
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "{input}"),
+        ])
+        question_answer_chain = create_stuff_documents_chain(chatModel, prompt)
+        _rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+        _init_done = True
+        print("RAG chain initialized!")
+
+
+def get_rag_chain():
+    if not _init_done:
+        _initialize_rag()
+    return _rag_chain
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -82,6 +97,7 @@ def chat():
     save_chat_message(user_id, "user", msg)
 
     try:
+        rag_chain = get_rag_chain()
         response = rag_chain.invoke({"input": msg})
         answer = response["answer"]
     except Exception as e:
@@ -119,13 +135,13 @@ def upload_file():
             text = text[:3000]
             combined_query = f"Based on this document content: {text[:2000]}\n\nUser question: {msg}"
             save_chat_message(user_id, "user", f"[Uploaded PDF: {file.filename}] {msg}")
+            rag_chain = get_rag_chain()
             response = rag_chain.invoke({"input": combined_query})
             answer = response["answer"]
 
         elif ext in {'png', 'jpg', 'jpeg', 'gif', 'webp'}:
             file_bytes = file.read()
             image = Image.open(io.BytesIO(file_bytes))
-            # Use google.genai (new API) for vision
             if genai_client:
                 vision_response = genai_client.models.generate_content(
                     model="gemini-2.5-flash",
@@ -144,6 +160,7 @@ def upload_file():
             text = file.read().decode('utf-8', errors='ignore')[:3000]
             combined_query = f"Based on this text: {text[:2000]}\n\nUser question: {msg}"
             save_chat_message(user_id, "user", f"[Uploaded Text: {file.filename}] {msg}")
+            rag_chain = get_rag_chain()
             response = rag_chain.invoke({"input": combined_query})
             answer = response["answer"]
         else:
