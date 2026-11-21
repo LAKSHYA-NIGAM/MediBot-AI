@@ -21,6 +21,8 @@ An intelligent medical assistant powered by **Retrieval-Augmented Generation (RA
 - **Secure Authentication**: Built-in user registration, bcrypt password hashing, and session management.
 - **Chat History & Persistence**: SQLite storage tracking conversational context per user account with clear-history controls.
 - **Automated Health Monitoring**: `/health` endpoint for container orchestration and uptime verification.
+- **Emergency Symptom Triage Classifier (`src/triage_classifier.py`)**: Intercepts acute, life-threatening symptoms (cardiac arrest, respiratory failure, stroke, anaphylaxis, crisis) and issues immediate emergency dispatch directives (911/112/999) with full AI guidance disclaimers.
+- **Clinical Consultation Exporter (`src/session_exporter.py`)**: Exports user chat histories into structured Markdown, JSON, or CSV for doctor review and medical documentation.
 
 ---
 
