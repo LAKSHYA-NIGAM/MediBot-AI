@@ -76,7 +76,18 @@ def get_rag_chain():
 
 
 def allowed_file(filename):
+    if not filename or not isinstance(filename, str):
+        return False
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({
+        "status": "healthy",
+        "service": "medibot-ai",
+        "gemini_configured": bool(GOOGLE_API_KEY)
+    }), 200
 
 
 @app.route("/")
