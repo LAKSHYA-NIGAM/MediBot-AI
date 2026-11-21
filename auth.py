@@ -6,11 +6,9 @@ import os
 
 auth_bp = Blueprint('auth', __name__)
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'users.db')
-
-
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    db_path = os.environ.get("DATABASE_PATH", os.path.join(os.path.dirname(__file__), 'users.db'))
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -119,7 +117,7 @@ def save_chat_message(user_id, role, message):
 def get_chat_history(user_id, limit=50):
     conn = get_db()
     rows = conn.execute(
-        'SELECT role, message, timestamp FROM chat_history WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?',
+        'SELECT role, message, timestamp FROM chat_history WHERE user_id = ? ORDER BY timestamp DESC, id DESC LIMIT ?',
         (user_id, limit)
     ).fetchall()
     conn.close()
